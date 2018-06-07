@@ -50,6 +50,12 @@ static const char* DepthBufferFormatsLabels[3] =
     "32-bit FLOAT",
 };
 
+static const char* DepthBufferEncodingsLabels[2] =
+{
+    "Regular",
+    "Reverse Z",
+};
+
 static const char* FixedFilterSizeLabels[5] =
 {
     "2x2",
@@ -108,6 +114,7 @@ namespace AppSettings
     ShadowModeSetting ShadowMode;
     ShadowMapSizeSetting ShadowMapSize;
     DepthBufferFormatsSetting DepthBufferFormat;
+    DepthBufferEncodingsSetting DepthBufferEncoding;
     FixedFilterSizeSetting FixedFilterSize;
     FloatSetting FilterSize;
     BoolSetting RandomizeDiscOffsets;
@@ -208,6 +215,9 @@ namespace AppSettings
 
         DepthBufferFormat.Initialize(tweakBar, "DepthBufferFormat", "Shadows", "Depth Buffer Format", "The surface format used for the shadow depth buffer", DepthBufferFormats::DB32Float, 3, DepthBufferFormatsLabels);
         Settings.AddSetting(&DepthBufferFormat);
+
+        DepthBufferEncoding.Initialize(tweakBar, "DepthBufferEncoding", "Shadows", "Depth Buffer Encoding", "The encoding used for the shadow depth buffer", DepthBufferEncodings::Regular, 3, DepthBufferEncodingsLabels);
+        Settings.AddSetting(&DepthBufferEncoding);
 
         FixedFilterSize.Initialize(tweakBar, "FixedFilterSize", "Shadows", "Fixed Filter Size", "Size of the PCF kernel used for Fixed Sized PCF shadow mode", FixedFilterSize::Filter2x2, 5, FixedFilterSizeLabels);
         Settings.AddSetting(&FixedFilterSize);

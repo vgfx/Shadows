@@ -135,6 +135,15 @@ enum DepthBufferFormats
     DB32Float,
 }
 
+enum DepthBufferEncodings
+{
+    [EnumLabel("Regular")]
+    Regular = 0,
+
+    [EnumLabel("Reverse Z")]
+    ReverseZ,
+}
+
 public class Settings
 {
     public class SceneControls
@@ -281,6 +290,10 @@ public class Settings
         [DisplayName("Depth Buffer Format")]
         [HelpText("The surface format used for the shadow depth buffer")]
         DepthBufferFormats DepthBufferFormat = DepthBufferFormats.DB32Float;
+
+        [DisplayName("Depth Buffer Encoding")]
+        [HelpText("The encoding used for the shadow depth buffer")]
+        DepthBufferEncodings DepthBufferEncoding = DepthBufferEncodings.Regular;
 
         [DisplayName("Fixed Filter Size")]
         [HelpText("Size of the PCF kernel used for Fixed Sized PCF shadow mode")]

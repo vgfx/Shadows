@@ -66,19 +66,24 @@ float ReduceLightBleeding(float pMax, float amount)
    return Linstep(amount, 1.0f, pMax);
 }
 
-float ChebyshevUpperBound(float2 moments, float mean, float minVariance,
+float ChebyshevUpperBound(float2 moments, float receiver, float minVariance,
                           float lightBleedingReduction)
 {
     // Compute variance
     float variance = moments.y - (moments.x * moments.x);
     variance = max(variance, minVariance);
 
+    #if ReverseDepthRange_
+        float d = min(receiver - moments.x, 0.0f);
+    #else
+        float d = max(receiver - moments.x, 0.0f);
+    #endif
+
     // Compute probabilistic upper bound
-    float d = mean - moments.x;
     float pMax = variance / (variance + (d * d));
 
     pMax = ReduceLightBleeding(pMax, lightBleedingReduction);
 
     // One-tailed Chebyshev
-    return (mean <= moments.x ? 1.0f : pMax);
+    return pMax;
 }

@@ -288,9 +288,11 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
     // Get position of the shadow camera
     Float3 shadowCameraPos = frustumCenter + AppSettings::LightDirection.Value() * -0.5f;
 
+    Float2 depthRange = AppSettings::GetDefaultShadowDepthRange();
+
     // Come up with a new orthographic camera for the shadow caster
     OrthographicCamera shadowCamera(-0.5f, -0.5f, 0.5f,
-                                    0.5f, 0.0f, 1.0f);
+                                    0.5f, depthRange.x, depthRange.y);
     shadowCamera.SetLookAt(shadowCameraPos, frustumCenter, upDir);
 
     Float4x4 texScaleBias = Float4x4::ScaleMatrix(Float3(0.5f, -0.5f, 1.0f));
@@ -312,6 +314,7 @@ static PixelShaderPtr CompileMeshPS(ID3D11Device* device)
     opts.Add("ShadowMode_", uint32(AppSettings::ShadowMode));
     opts.Add("RandomizeOffsets_", AppSettings::RandomizeDiscOffsets);
     opts.Add("SelectFromProjection_", AppSettings::CascadeSelectionMode == CascadeSelectionModes::Projection ? 1 : 0);
+    opts.Add("ReverseDepthRange_", AppSettings::ReverseDepthRange() ? 1 : 0);
     return CompilePSFromFile(device, L"Mesh.hlsl", "PS", "ps_5_0", opts);
 }
 
@@ -437,7 +440,7 @@ void MeshRenderer::CreateShadowMaps()
                 smFmt = DXGI_FORMAT_R32G32_FLOAT;
         }
 
-        uint32 numMips = AppSettings::EnableShadowMips ? 0 : 1;
+        uint32 numMips = AppSettings::EnableShadowMips ? 0 : 1; // Apparently, generates all MIPs if you pass 1
         varianceShadowMap.Initialize(device, ShadowMapSize, ShadowMapSize, smFmt, numMips, 1, 0,
                                      AppSettings::EnableShadowMips, false, NumCascades, false);
 
@@ -651,7 +654,9 @@ static void DoFrustumTests(const Camera& camera, bool ignoreNearZ, MeshData& mes
     for(uint32 i = 0; i < mesh.BoundingSpheres.size(); ++i)
     {
         const Sphere& sphere = mesh.BoundingSpheres[i];
-        uint32 test = TestFrustumSphere(frustum, sphere, ignoreNearZ);
+        uint32 test = 1; // TODO: fix frustum culling for reverse Z
+        if (!AppSettings::ReverseDepthRange())
+            test = TestFrustumSphere(frustum, sphere, ignoreNearZ);
         mesh.FrustumTests.push_back(test);
         mesh.NumSuccessfulTests += test;
     }
@@ -667,7 +672,7 @@ void MeshRenderer::Update()
     if(AppSettings::VisualizeCascades.Changed() || AppSettings::UsePlaneDepthBias.Changed()
        || AppSettings::FilterAcrossCascades.Changed() || AppSettings::FixedFilterSize.Changed()
        || AppSettings::ShadowMode.Changed() || AppSettings::RandomizeDiscOffsets.Changed()
-       || AppSettings::CascadeSelectionMode.Changed())
+       || AppSettings::CascadeSelectionMode.Changed() || AppSettings::DepthBufferEncoding.Changed())
         meshPS = CompileMeshPS(device);
 
     if(AppSettings::AutoComputeDepthBounds && AppSettings::GPUSceneSubmission == false)
@@ -1195,9 +1200,10 @@ void MeshRenderer::SetupRenderDepthState(ID3D11DeviceContext* context, bool shad
     // Set states
     float blendFactor[4] = {1, 1, 1, 1};
     context->OMSetBlendState(blendStates.ColorWriteDisabled(), blendFactor, 0xFFFFFFFF);
-    context->OMSetDepthStencilState(depthStencilStates.DepthWriteEnabled(), 0);
 
-    if(shadowRendering)
+    context->OMSetDepthStencilState(shadowRendering && AppSettings::ReverseDepthRange() ? depthStencilStates.ReverseDepthWriteEnabled()
+                                                                                        : depthStencilStates.DepthWriteEnabled(), 0);
+    if (shadowRendering)
         context->RSSetState(shadowRSState);
     else
         context->RSSetState(rasterizerStates.BackFaceCull());
@@ -1369,6 +1375,8 @@ void MeshRenderer::RenderShadowMap(ID3D11DeviceContext* context, const Camera& c
     Float4x4 globalShadowMatrix = MakeGlobalShadowMatrix(camera);
     meshPSConstants.Data.ShadowMatrix = Float4x4::Transpose(globalShadowMatrix);
 
+    Float2 depthRange = AppSettings::GetDefaultShadowDepthRange();
+
     // Render the meshes to each cascade
     for(uint32 cascadeIdx = 0; cascadeIdx < NumCascades; ++cascadeIdx)
     {
@@ -1390,7 +1398,7 @@ void MeshRenderer::RenderShadowMap(ID3D11DeviceContext* context, const Camera& c
             dsv = shadowMap.ArraySlices[cascadeIdx];
         ID3D11RenderTargetView* nullRenderTargets[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { nullptr };
         context->OMSetRenderTargets(D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT, nullRenderTargets, dsv);
-        context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH|D3D11_CLEAR_STENCIL, 1.0f, 0);
+        context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH|D3D11_CLEAR_STENCIL, depthRange.y, 0);
 
         // Get the 8 points of the view frustum in world space
         Float3 frustumCornersWS[8] =
@@ -1485,8 +1493,12 @@ void MeshRenderer::RenderShadowMap(ID3D11DeviceContext* context, const Camera& c
         Float3 shadowCameraPos = frustumCenter + AppSettings::LightDirection.Value() * -minExtents.z;
 
         // Come up with a new orthographic camera for the shadow caster
+
+        float n = AppSettings::ReverseDepthRange() ? cascadeExtents.z : 0.0f;
+        float f = AppSettings::ReverseDepthRange() ? 0.0f : cascadeExtents.z;
+
         OrthographicCamera shadowCamera(minExtents.x, minExtents.y, maxExtents.x,
-                                        maxExtents.y, 0.0f, cascadeExtents.z);
+                                        maxExtents.y, n, f);
         shadowCamera.SetLookAt(shadowCameraPos, frustumCenter, upDir);
 
         if(AppSettings::StabilizeCascades)

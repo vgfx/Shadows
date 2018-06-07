@@ -15,6 +15,7 @@ cbuffer AppSettings : register(b7)
     float PSSMLambda;
     int ShadowMapSize;
     int DepthBufferFormat;
+    int DepthBufferEncoding;
     float FilterSize;
     int NumDiscSamples;
     float Bias;
@@ -61,6 +62,9 @@ static const int ShadowMapSize_SMSize2048 = 2;
 static const int DepthBufferFormats_DB16Unorm = 0;
 static const int DepthBufferFormats_DB24Unorm = 1;
 static const int DepthBufferFormats_DB32Float = 2;
+
+static const int DepthBufferEncodings_Regular = 0;
+static const int DepthBufferEncodings_ReverseZ = 1;
 
 static const int FixedFilterSize_Filter2x2 = 0;
 static const int FixedFilterSize_Filter3x3 = 1;

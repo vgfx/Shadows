@@ -77,6 +77,16 @@ enum class DepthBufferFormats
 
 typedef EnumSettingT<DepthBufferFormats> DepthBufferFormatsSetting;
 
+enum class DepthBufferEncodings
+{
+    Regular = 0,
+    ReverseZ = 1,
+
+    NumValues
+};
+
+typedef EnumSettingT<DepthBufferEncodings> DepthBufferEncodingsSetting;
+
 enum class FixedFilterSize
 {
     Filter2x2 = 0,
@@ -151,6 +161,7 @@ namespace AppSettings
     extern ShadowModeSetting ShadowMode;
     extern ShadowMapSizeSetting ShadowMapSize;
     extern DepthBufferFormatsSetting DepthBufferFormat;
+    extern DepthBufferEncodingsSetting DepthBufferEncoding;
     extern FixedFilterSizeSetting FixedFilterSize;
     extern FloatSetting FilterSize;
     extern BoolSetting RandomizeDiscOffsets;
@@ -191,6 +202,7 @@ namespace AppSettings
         float PSSMLambda;
         int32 ShadowMapSize;
         int32 DepthBufferFormat;
+        int32 DepthBufferEncoding;
         float FilterSize;
         int32 NumDiscSamples;
         float Bias;
@@ -286,6 +298,19 @@ namespace AppSettings
     inline bool UseFilterableShadows()
     {
         return UseFilterableShadows(ShadowMode);
+    }
+
+    inline bool ReverseDepthRange()
+    {
+        return DepthBufferEncoding == DepthBufferEncodings::ReverseZ;
+    }
+
+    inline Float2 GetDefaultShadowDepthRange()
+    {
+        float n = ReverseDepthRange() ? 1.0f : 0.0f;
+        float f = 1.0f - n;
+
+        return Float2(n, f);
     }
 
     inline uint32 MSAASamples(uint32 value)

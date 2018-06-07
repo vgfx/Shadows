@@ -22,8 +22,8 @@ namespace SampleFramework11
 Camera::Camera(float nearClip, float farClip) : nearZ(nearClip),
                                                 farZ(farClip)
 {
-    Assert_(nearZ >= 0.0f && nearZ < farZ);
-    Assert_(farZ >= 0.0f && farZ > nearZ);
+    // Assert_(nearZ >= 0.0f && nearZ < farZ);
+    // Assert_(farZ >= 0.0f && farZ > nearZ);
 
     world = XMMatrixIdentity();
     view = XMMatrixIdentity();
